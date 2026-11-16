@@ -1,0 +1,36 @@
+name: Fork release
+
+on:
+  push:
+    tags:
+      - 'fork-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: NixOS/nix-installer-action@main
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the installer
+        run: nix build .#nix-installer -L
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cp result/bin/nix-installer nix-installer-aarch64-darwin
+          gh release create "$TAG" nix-installer-aarch64-darwin \
+            --title "$TAG" \
+            --notes "Fork build of NixOS/nix-installer#265 (macOS --no-time-machine-exclusions) for aarch64-darwin."
